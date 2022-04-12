@@ -16,6 +16,7 @@ import android.text.InputType;
 import android.view.View;
 import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.CompoundButton;
 import android.widget.DatePicker;
 import android.widget.EditText;
 import android.widget.TimePicker;
@@ -67,35 +68,46 @@ public class AddReminder extends AppCompatActivity {
         weekly.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                String input = dateAndTimeInput.getText().toString();
-                long timer = getTime(getYear(input), getMonth(input) - 1, getDay(input) + 7, getHour(input), getMinute(input), 0);
+                /*String input = dateAndTimeInput.getText().toString();
+                long timer = getTime(getYear(input), getMonth(input) - 1, getDay(input), getHour(input), getMinute(input), 10);*/
+                long timer = 604800000L;
                 occurrence.add(timer);
             }
         });
         monthly.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                String input = dateAndTimeInput.getText().toString();
-                long timer = getTime(getYear(input), getMonth(input), getDay(input), getHour(input), getMinute(input), 0);
+                /*String input = dateAndTimeInput.getText().toString();
+                long timer = getTime(getYear(input), getMonth(input) - 1, getDay(input), getHour(input), getMinute(input), 20);*/
+                long timer = 31556736000L;
                 occurrence.add(timer);
             }
         });
-        annually.setOnClickListener(new View.OnClickListener() {
+        annually.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             @Override
-            public void onClick(View view) {
-                String input = dateAndTimeInput.getText().toString();
-                long timer = getTime(getYear(input) + 1, getMonth(input) - 1, getDay(input), getHour(input), getMinute(input), 0);
-                occurrence.add(timer);
+            public void onCheckedChanged(CompoundButton compoundButton, boolean b) {
+                if(compoundButton.isChecked()){
+                    long timer = 31556736000L;
+                    occurrence.add(timer);
+                }else{
+                    System.out.println("Not Checked");
+                }
             }
         });
+
         setReminder.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 reminderDB reminderDB = new reminderDB(AddReminder.this);
                 reminderDB.addReminder(dateAndTimeInput.getText().toString(), titleInput.getText().toString(), notesInput.getText().toString());
                 for (int i = 0; i < occurrence.size(); i++) {
-                    setNotification(occurrence.get(i));
+                    System.out.println(i + " : " + occurrence.get(i));
+                    //setNotification(occurrence.get(i));
                 }
+
+                String input = dateAndTimeInput.getText().toString();
+                long timer = getTime(getYear(input), getMonth(input) - 1, getDay(input), getHour(input), getMinute(input), 0);
+                setNotification(timer, titleInput.getText().toString(), notesInput.getText().toString());
                 Intent intent = new Intent(AddReminder.this, reminderView.class);
                 startActivity(intent);
             }
@@ -149,9 +161,11 @@ public class AddReminder extends AppCompatActivity {
         return time;
     }
 
-    public void setNotification(long timer) {
-        //String input =dateAndTimeInput.getText().toString();
-        //long timer=getTime(getYear(input),getMonth(input)-1,getDay(input),getHour(input),getMinute(input),0);
+    public void setNotification(long timer, String title, String description) {
+        String input = dateAndTimeInput.getText().toString();
+        long timer2 = getTime(getYear(input), getMonth(input) - 1, getDay(input), getHour(input), getMinute(input), 1);
+        //long b = 300000L;
+        long b = 30000L;
         long cutoff = 1649648580541L;
         if (timer < cutoff) {   //Any time that passed wont set reminder.
             Toast.makeText(AddReminder.this, "Reminder Not Set. Date Already Passed!", Toast.LENGTH_SHORT).show();
@@ -160,30 +174,14 @@ public class AddReminder extends AppCompatActivity {
             Toast.makeText(AddReminder.this, "Reminder Set!", Toast.LENGTH_SHORT).show();
             AlarmManager alarmManager = (AlarmManager) getSystemService(ALARM_SERVICE);
             Intent intent = new Intent(AddReminder.this, receiver.class);
-            PendingIntent pendingIntent;
-            for(int i=0; i<occurrence.size();i++) {
-                pendingIntent = PendingIntent.getBroadcast(AddReminder.this, i, intent, 0);
-            }
-                alarmManager.setExact(AlarmManager.RTC_WAKEUP, timer, pendingIntent);
+            intent.putExtra("Title", title);
+            intent.putExtra("Description", description);
+            intent.putExtra("id", (int) timer);
+
+            PendingIntent pendingIntent = PendingIntent.getBroadcast(AddReminder.this, (int) timer, intent, PendingIntent.FLAG_IMMUTABLE);
+            //alarmManager.setExact(AlarmManager.RTC_WAKEUP, timer, pendingIntent);
+            alarmManager.setInexactRepeating(AlarmManager.RTC_WAKEUP, timer, b, pendingIntent);
         }
-    }
-
-    public void weeklyReminder() {
-        String input = dateAndTimeInput.getText().toString();
-        long timer = getTime(getYear(input), getMonth(input) - 1, getDay(input), getHour(input), getMinute(input)+1, 0);
-        setNotification(timer);
-    }
-
-    public void monthlyReminder() {
-        String input = dateAndTimeInput.getText().toString();
-        long timer = getTime(getYear(input), getMonth(input)-1, getDay(input), getHour(input), getMinute(input)+2, 0);
-        setNotification(timer);
-    }
-
-    public void annualReminder() {
-        String input = dateAndTimeInput.getText().toString();
-        long timer = getTime(getYear(input), getMonth(input) - 1, getDay(input), getHour(input), getMinute(input)+3, 0);
-        setNotification(timer);
     }
 
     public int getMonth(String input) {
